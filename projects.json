@@ -1,0 +1,24 @@
+[
+    {
+        "title": "コンビニ新着商品自動収集・LINE配信システム",
+        "description": "セブンイレブン、ファミリーマート、ローソンのHPを週1回自動巡回し、新着商品から高タンパク低脂質商品を自動抽出してLINE公式アカウントにカード形式で配信するシステム。",
+        "tech": ["Python", "スクレイピング", "LINE Messaging API", "定期実行"],
+        "github": "https://github.com/kitayama-ai/convenience-store-product-system",
+        "demo": null
+    },
+    {
+        "title": "カウンセラー自動フィードバックシステム",
+        "description": "管理画面から相談率を監視し、基準を下回った場合にAIが過去の相談ログを分析して改善案をカウンセラー本人のLINEへ自動送付するシステム。",
+        "tech": ["Python", "Playwright", "n8n", "OpenAI API", "LINE Messaging API", "Google Sheets API", "Docker"],
+        "github": null,
+        "demo": null
+    },
+    {
+        "title": "AIエージェントシステム",
+        "description": "2つのAIエージェント（コピーライターとレビューアー）が自動で往復し、最強の広告コピーを制作するマルチエージェント協調システム。",
+        "tech": ["Python", "AIエージェント", "マルチエージェント協調"],
+        "github": null,
+        "demo": null
+    }
+]
+
