@@ -113,8 +113,32 @@ window.addEventListener('scroll', () => {
     });
 });
 
+// スクロールアニメーション
+function initScrollAnimation() {
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, observerOptions);
+
+    // アニメーション対象の要素を監視
+    document.querySelectorAll('.skill-category, .project-card, .contact-item').forEach(el => {
+        el.classList.add('fade-in');
+        observer.observe(el);
+    });
+}
+
 // ページ読み込み時にプロジェクトを表示
 document.addEventListener('DOMContentLoaded', () => {
     renderProjects();
+    // 少し遅延させてスクロールアニメーションを初期化
+    setTimeout(initScrollAnimation, 100);
 });
 
