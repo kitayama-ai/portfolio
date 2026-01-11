@@ -233,13 +233,18 @@ body {
     content: '';
     position: absolute;
     bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
     width: 100px;
     height: 4px;
-    background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
     border-radius: 2px;
-    opacity: 0.5;
+}
+
+@media (max-width: 968px) {
+    .hero-title::after {
+        left: 50%;
+        transform: translateX(-50%);
+    }
 }
 
 .hero-subtitle {
@@ -259,8 +264,15 @@ body {
 .hero-cta {
     display: flex;
     gap: var(--spacing-md);
-    justify-content: center;
+    justify-content: flex-start;
     flex-wrap: wrap;
+    margin-top: var(--spacing-xl);
+}
+
+@media (max-width: 968px) {
+    .hero-cta {
+        justify-content: center;
+    }
 }
 
 .btn {
