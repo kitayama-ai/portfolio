@@ -8,6 +8,20 @@ const projectsData = [
         demo: null
     },
     {
+        title: "AI広告ダッシュボード",
+        description: "AIを活用した広告効果を可視化・分析するダッシュボードシステム。広告データの自動収集、分析、レポート生成を自動化。",
+        tech: ["Python", "データ分析", "ダッシュボード"],
+        github: "https://github.com/kitayama-ai/ai-ad-dashboard",
+        demo: null
+    },
+    {
+        title: "AIおばちゃんLP",
+        description: "AIを活用したターゲット層向けランディングページ。モダンなデザインとレスポンシブ対応により、高いコンバージョン率を実現。",
+        tech: ["HTML", "CSS", "JavaScript", "レスポンシブデザイン"],
+        github: "https://github.com/kitayama-ai/ai-obachan-lp",
+        demo: null
+    },
+    {
         title: "カウンセラー自動フィードバックシステム",
         description: "管理画面から相談率を監視し、基準を下回った場合にAIが過去の相談ログを分析して改善案をカウンセラー本人のLINEへ自動送付するシステム。",
         tech: ["Python", "Playwright", "n8n", "OpenAI API", "LINE Messaging API", "Google Sheets API", "Docker"],
