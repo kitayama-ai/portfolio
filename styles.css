@@ -217,16 +217,34 @@ body {
 .hero-title {
     font-size: 4rem;
     font-weight: 900;
+    margin-bottom: var(--spacing-md);
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+    position: relative;
+    animation: fadeInUp 1s ease-out;
+    text-align: left;
+}
+
+.hero-title br {
+    display: block;
+}
+
+.hero-title {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 50%, var(--accent-2) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: var(--spacing-md);
-    line-height: 1.1;
-    letter-spacing: -0.03em;
-    text-shadow: 0 0 40px rgba(99, 102, 241, 0.2);
-    position: relative;
-    animation: fadeInUp 1s ease-out;
+}
+
+.hero-title-symbol {
+    font-size: 3.5rem;
+    font-weight: 900;
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    padding: 0 var(--spacing-xs);
 }
 
 .hero-title::after {
@@ -248,10 +266,11 @@ body {
 }
 
 .hero-subtitle {
-    font-size: 1.5rem;
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
     margin-bottom: var(--spacing-lg);
+    letter-spacing: -0.02em;
 }
 
 .hero-description {
@@ -1056,6 +1075,10 @@ section {
 @media (max-width: 768px) {
     .hero-title {
         font-size: 2.5rem;
+    }
+    
+    .hero-title-symbol {
+        font-size: 2rem;
     }
 
     .hero-subtitle {
