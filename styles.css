@@ -223,17 +223,14 @@ body {
     position: relative;
     animation: fadeInUp 1s ease-out;
     text-align: left;
-}
-
-.hero-title br {
-    display: block;
-}
-
-.hero-title {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 50%, var(--accent-2) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+.hero-title br {
+    display: block;
 }
 
 .hero-title-symbol {
