@@ -13,8 +13,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import traceback
 
-from recorder import HeadlessZoomRecorder, TranscriptionOnlyRecorder
-from zoom_detector import ZoomDetector
+# macOS専用モジュール（クラウド環境ではスキップ）
+try:
+    from recorder import HeadlessZoomRecorder, TranscriptionOnlyRecorder
+    from zoom_detector import ZoomDetector
+    HAS_LOCAL_FEATURES = True
+except ImportError as e:
+    print(f"ローカル機能のインポートをスキップ: {e}")
+    HeadlessZoomRecorder = None
+    TranscriptionOnlyRecorder = None
+    ZoomDetector = None
+    HAS_LOCAL_FEATURES = False
 from transcription import TranscriptionService
 from meeting_summary import MeetingSummaryService
 from slack_notifier import SlackNotifier
@@ -259,6 +268,9 @@ async def get_status():
 @app.post("/api/recording/start")
 async def start_recording(request: RecordingRequest, credentials = Depends(verify_token)):
     """録画開始"""
+    if not HAS_LOCAL_FEATURES:
+        raise HTTPException(status_code=400, detail="録画機能はローカル環境のみ利用可能です")
+    
     if recorder_state["recording"]:
         raise HTTPException(status_code=400, detail="既に録画中です")
     
@@ -519,10 +531,19 @@ async def websocket_agent(websocket: WebSocket, token: str = None):
 # 起動時のイベント
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(zoom_status_monitor())
+    # Zoom状態監視はローカル環境のみ（クラウド環境ではスキップ）
+    if HAS_LOCAL_FEATURES and os.getenv("RAILWAY_ENVIRONMENT") is None and os.getenv("RENDER") is None:
+        asyncio.create_task(zoom_status_monitor())
+    else:
+        # クラウド環境では固定値
+        recorder_state["zoom_status"] = "クラウド環境"
+        recorder_state["meeting_active"] = False
 
 async def zoom_status_monitor():
-    """Zoom状態を監視"""
+    """Zoom状態を監視（ローカル環境のみ）"""
+    if not HAS_LOCAL_FEATURES or not ZoomDetector:
+        return
+    
     while True:
         try:
             zoom_running = ZoomDetector.is_zoom_running()
