@@ -41,7 +41,14 @@ SECRET_KEY=your-secret-key-change-in-production
 
 ### 3. macOSの場合の追加設定
 
-BlackHoleのインストールが必要です：
+BlackHoleのインストールが必要です。以下のコマンドで自動インストールできます：
+
+```bash
+cd zoom-recorder-web
+./install_blackhole.sh
+```
+
+または、Homebrewがインストールされている場合：
 
 ```bash
 brew install blackhole-2ch
