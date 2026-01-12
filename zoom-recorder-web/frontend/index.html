@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoom自動録画ツール</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <header class="header">
+            <h1 class="title">🎥 Zoom自動録画ツール</h1>
+            <div class="header-actions">
+                <div class="status-badge" id="statusBadge">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">待機中</span>
+                </div>
+                <button class="btn-icon-only" onclick="openSettingsModal()" title="設定">⚙️</button>
+                <button class="btn-icon-only" onclick="logout()" title="ログアウト">🚪</button>
+            </div>
+        </header>
+
+        <!-- メインコンテンツ -->
+        <main class="main-content">
+            <!-- Zoom状態カード -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📡 Zoom状態</h2>
+                </div>
+                <div class="card-body">
+                    <div class="zoom-status" id="zoomStatus">
+                        <div class="status-item">
+                            <span class="label">状態:</span>
+                            <span class="value" id="zoomStatusText">未検出</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">会議:</span>
+                            <span class="value" id="meetingStatusText">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 録画コントロールカード -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>🎬 録画コントロール</h2>
+                </div>
+                <div class="card-body">
+                    <!-- 録画モード選択 -->
+                    <div class="mode-selector">
+                        <label class="radio-label">
+                            <input type="radio" name="recordingMode" value="recording_and_transcription" checked>
+                            <span>📹 録画 + 文字起こし</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="recordingMode" value="transcription_only">
+                            <span>📝 文字起こしのみ</span>
+                        </label>
+                    </div>
+                    
+                    <div class="recording-info" id="recordingInfo" style="display: none;">
+                        <div class="info-item">
+                            <span class="label">会議名:</span>
+                            <span class="value" id="meetingTitle">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">録画時間:</span>
+                            <span class="value" id="recordingDuration">00:00:00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="controls">
+                        <button class="btn btn-primary btn-large" id="recordButton" disabled>
+                            <span class="btn-icon">🎬</span>
+                            <span class="btn-text">録画開始</span>
+                        </button>
+                    </div>
+
+                    <div class="options">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="autoStopCheck" checked>
+                            <span>会議終了時に自動停止</span>
+                        </label>
+                        <label class="checkbox-label" id="audioOnlyLabel" style="display: none;">
+                            <input type="checkbox" id="audioOnlyCheck">
+                            <span>音声のみ録音</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ログカード -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📋 ログ</h2>
+                </div>
+                <div class="card-body">
+                    <div class="log-container" id="logContainer">
+                        <div class="log-item">システムを起動しました</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 議事録カード（処理完了後） -->
+            <div class="card" id="summaryCard" style="display: none;">
+                <div class="card-header">
+                    <h2>📝 議事録</h2>
+                </div>
+                <div class="card-body">
+                    <div class="summary-content" id="summaryContent"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 設定モーダル -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ 設定</h2>
+                <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="recordingFolder">📁 録画フォルダ</label>
+                    <div class="input-group">
+                        <input type="text" id="recordingFolder" class="form-input" placeholder="/Users/username/Documents/ZoomRecordings">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="documentFolder">📄 ドキュメントフォルダ</label>
+                    <div class="input-group">
+                        <input type="text" id="documentFolder" class="form-input" placeholder="/Users/username/Documents/MeetingNotes">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="googleDocsCheck">
+                        <span>Googleドキュメントに自動保存</span>
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+                    <button class="btn btn-secondary" onclick="closeSettingsModal()">キャンセル</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
