@@ -3,7 +3,7 @@
 nixPkgs = ["python3", "python3Packages.pip"]
 
 [phases.install]
-cmds = ["cd zoom-recorder-web && pip install -r requirements.txt"]
+cmds = ["cd zoom-recorder-web && python3 -m pip install --upgrade pip && python3 -m pip install -r requirements.txt"]
 
 [start]
 cmd = "cd zoom-recorder-web/backend && python3 main.py"
