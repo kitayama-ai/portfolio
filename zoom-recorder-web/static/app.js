@@ -1,5 +1,8 @@
 class ZoomRecorderApp {
     constructor() {
+        // APIベースURL（環境変数またはデフォルト値）
+        this.apiBaseUrl = window.API_BASE_URL || '';
+        this.wsBaseUrl = window.WS_BASE_URL || '';
         this.token = localStorage.getItem('access_token');
         if (!this.token) {
             window.location.href = '/login.html';
@@ -19,8 +22,14 @@ class ZoomRecorderApp {
     }
 
     connectWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        // WebSocket URL（環境変数または自動検出）
+        let wsUrl;
+        if (this.wsBaseUrl) {
+            wsUrl = this.wsBaseUrl;
+        } else {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            wsUrl = `${protocol}//${window.location.host}/ws`;
+        }
         
         this.ws = new WebSocket(wsUrl);
 
@@ -119,13 +128,15 @@ class ZoomRecorderApp {
     }
 
     async apiRequest(url, options = {}) {
+        // 相対パスの場合はAPIベースURLを追加
+        const fullUrl = url.startsWith('http') ? url : `${this.apiBaseUrl}${url}`;
         const headers = {
             'Authorization': `Bearer ${this.token}`,
             'Content-Type': 'application/json',
             ...options.headers
         };
         
-        const response = await fetch(url, { ...options, headers });
+        const response = await fetch(fullUrl, { ...options, headers });
         
         if (response.status === 401) {
             localStorage.removeItem('access_token');
@@ -138,7 +149,7 @@ class ZoomRecorderApp {
 
     async updateStatus() {
         try {
-            const response = await fetch('/api/status');
+            const response = await this.apiRequest('/api/status');
             const data = await response.json();
             
             this.updateUI(data);
@@ -332,7 +343,8 @@ async function saveSettings() {
 
     try {
         const token = localStorage.getItem('access_token');
-        const response = await fetch('/api/settings', {
+        const apiBaseUrl = window.API_BASE_URL || '';
+        const response = await fetch(`${apiBaseUrl}/api/settings`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',

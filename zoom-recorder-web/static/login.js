@@ -1,3 +1,6 @@
+// APIベースURL（環境変数またはデフォルト値）
+const API_BASE_URL = window.API_BASE_URL || '';
+
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -6,7 +9,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const errorMessage = document.getElementById('errorMessage');
     
     try {
-        const response = await fetch('/api/auth/login', {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -37,7 +40,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     const errorMessage = document.getElementById('errorMessage');
     
     try {
-        const response = await fetch('/api/auth/register', {
+        const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, email, password })

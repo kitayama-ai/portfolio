@@ -46,9 +46,20 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 # CORS設定
+# GitHub Pages用に特定のオリジンを許可（本番環境では適切に設定）
+allowed_origins = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    # GitHub Pagesのドメインを追加（例: "https://kitayama-ai.github.io"）
+    # 環境変数から取得することも可能
+]
+# 開発環境ではすべて許可（本番環境では削除推奨）
+if os.getenv("ENVIRONMENT") != "production":
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
