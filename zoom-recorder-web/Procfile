@@ -1,1 +1,1 @@
-web: cd zoom-recorder-web/backend && python3.11 main.py
+web: cd zoom-recorder-web/backend && python main.py
