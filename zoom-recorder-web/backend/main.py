@@ -73,6 +73,8 @@ if static_dir.exists():
 frontend_dir = Path(__file__).parent.parent / "frontend"
 if frontend_dir.exists():
     app.mount("/frontend", StaticFiles(directory=str(frontend_dir)), name="frontend")
+    # 静的ファイルとして直接提供
+    app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="frontend_static")
 
 # ルートパス: ログインページにリダイレクト
 @app.get("/")
@@ -205,6 +207,7 @@ async def get_current_user(credentials = Depends(verify_token)):
     """現在のユーザー情報を取得"""
     username = credentials.get("sub")
     user = get_user(username)
+
     if user:
         return {"username": user["username"], "email": user.get("email", "")}
     raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
@@ -260,50 +263,56 @@ async def start_recording(request: RecordingRequest, credentials = Depends(verif
         raise HTTPException(status_code=400, detail="既に録画中です")
     
     if not recorder_state["meeting_active"]:
-        raise HTTPException(status_code=400, detail="Zoom会議が検出されません")
+        raise HTTPException(status_code=400, detail="Zoom会議が検出されていません")
+    
+    username = credentials.get("sub")
+    config = ConfigManager.load_config(username)
+    recording_folder = ConfigManager.get_recording_folder(username)
+    document_folder = ConfigManager.get_document_folder(username)
+    
+    recorder_state["mode"] = request.mode
     
     try:
-        username = credentials.get("sub")
-        meeting_title = request.meeting_title or f"Meeting_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        mode = request.mode
-        
-        recording_folder = ConfigManager.get_recording_folder(username=username)
-        
-        if mode == "transcription_only":
-            # 文字起こしのみモード
-            temp_folder = Path("/tmp/zoom_transcription")
-            temp_folder.mkdir(parents=True, exist_ok=True)
-            recorder = TranscriptionOnlyRecorder()
-            recording_path = recorder.start_recording(meeting_title, temp_folder)
+        if request.mode == "transcription_only":
+            recorder = TranscriptionOnlyRecorder(
+                output_dir=recording_folder,
+                meeting_title=request.meeting_title or recorder_state["meeting_title"]
+            )
         else:
-            # 録画+文字起こしモード
-            recorder = HeadlessZoomRecorder(recording_folder=recording_folder)
-            recording_path = recorder.start_recording(
-                meeting_title,
+            recorder = HeadlessZoomRecorder(
+                output_dir=recording_folder,
+                meeting_title=request.meeting_title or recorder_state["meeting_title"],
                 audio_only=request.audio_only
             )
         
+        recorder.start()
         recorder_state["recording"] = True
         recorder_state["recorder"] = recorder
-        recorder_state["recording_path"] = recording_path
-        recorder_state["meeting_title"] = meeting_title
         recorder_state["start_time"] = datetime.now()
-        recorder_state["mode"] = mode
-        recorder_state["username"] = username
+        recorder_state["recording_path"] = recorder.output_path
         
+        # 自動停止モニタリング
+        if request.auto_stop:
+            asyncio.create_task(auto_stop_monitoring(username))
+        
+        # WebSocketで通知
         await manager.broadcast({
             "type": "recording_started",
-            "meeting_title": meeting_title,
-            "mode": mode
+            "recording": True,
+            "mode": request.mode,
+            "audio_only": request.audio_only if request.mode != "transcription_only" else True
         })
         
-        if request.auto_stop:
-            asyncio.create_task(auto_stop_monitoring())
-        
-        return {"status": "success", "message": "録画を開始しました"}
-    
+        return {
+            "status": "success",
+            "message": "録画を開始しました",
+            "recording": True,
+            "mode": request.mode
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"録画開始エラー: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"録画開始エラー: {str(e)}")
 
 @app.post("/api/recording/stop")
 async def stop_recording(credentials = Depends(verify_token)):
@@ -311,201 +320,157 @@ async def stop_recording(credentials = Depends(verify_token)):
     if not recorder_state["recording"]:
         raise HTTPException(status_code=400, detail="録画中ではありません")
     
+    username = credentials.get("sub")
+    recorder = recorder_state["recorder"]
+    
     try:
+        recorder.stop()
+        recording_path = recorder_state["recording_path"]
+        
         recorder_state["recording"] = False
-        output_path = recorder_state["recorder"].stop_recording()
-        username = credentials.get("sub") or recorder_state.get("username", "default")
+        recorder_state["recorder"] = None
+        recorder_state["recording_path"] = None
         
-        # バックグラウンドで処理
-        asyncio.create_task(process_recording_async(
-            output_path, 
-            recorder_state["mode"],
-            username
-        ))
+        # 非同期で処理
+        asyncio.create_task(process_recording_async(recording_path, username, recorder_state["mode"]))
         
+        # WebSocketで通知
         await manager.broadcast({
             "type": "recording_stopped",
-            "message": "録画を停止しました。処理中..."
+            "recording": False
         })
         
-        return {"status": "success", "message": "録画を停止しました"}
-    
+        return {
+            "status": "success",
+            "message": "録画を停止しました",
+            "recording": False
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"録画停止エラー: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"録画停止エラー: {str(e)}")
 
-async def auto_stop_monitoring():
+async def auto_stop_monitoring(username: str):
     """会議終了を監視して自動停止"""
     while recorder_state["recording"]:
-        if not ZoomDetector.is_meeting_active():
-            await asyncio.sleep(5)
-            if not ZoomDetector.is_meeting_active():
-                recorder_state["recording"] = False
-                if recorder_state["recorder"]:
-                    output_path = recorder_state["recorder"].stop_recording()
-                    username = recorder_state.get("username", "default")
-                    if output_path:
-                        asyncio.create_task(process_recording_async(
-                            output_path,
-                            recorder_state["mode"],
-                            username
-                        ))
-                
-                await manager.broadcast({
-                    "type": "auto_stopped",
-                    "message": "会議終了を検知して自動停止しました"
-                })
-                break
-        await asyncio.sleep(2)
+        await asyncio.sleep(5)
+        
+        if not recorder_state["meeting_active"]:
+            print("会議が終了したため、録画を自動停止します")
+            recorder = recorder_state["recorder"]
+            if recorder:
+                try:
+                    recorder.stop()
+                    recording_path = recorder_state["recording_path"]
+                    
+                    recorder_state["recording"] = False
+                    recorder_state["recorder"] = None
+                    recorder_state["recording_path"] = None
+                    
+                    # 非同期で処理
+                    await process_recording_async(recording_path, username, recorder_state["mode"])
+                    
+                    # WebSocketで通知
+                    await manager.broadcast({
+                        "type": "recording_auto_stopped",
+                        "recording": False,
+                        "reason": "会議終了"
+                    })
+                except Exception as e:
+                    print(f"自動停止エラー: {e}")
+                    traceback.print_exc()
+            break
 
-async def process_recording_async(output_path: Path, mode: str, username: str):
-    """録画ファイルを非同期で処理"""
+async def process_recording_async(recording_path: str, username: str, mode: str):
+    """録画後の処理（文字起こし、議事録生成など）"""
     try:
-        meeting_title = recorder_state["meeting_title"]
-        document_folder = ConfigManager.get_document_folder(username=username)
+        config = ConfigManager.load_config(username)
+        document_folder = ConfigManager.get_document_folder(username)
+        
+        if mode == "transcription_only" or not recording_path.endswith(".mp4"):
+            # 音声ファイルの場合
+            audio_path = recording_path
+        else:
+            # 動画ファイルから音声を抽出（必要に応じて）
+            audio_path = recording_path.replace(".mp4", ".wav")
+            # TODO: ffmpegで音声抽出
         
         # 文字起こし
         transcription_service = TranscriptionService()
-        transcription_result = transcription_service.transcribe_audio(
-            str(output_path),
-            language="ja"
-        )
+        transcript = transcription_service.transcribe_audio(audio_path)
         
-        await manager.broadcast({
-            "type": "transcription_complete",
-            "duration": transcription_result["duration"]
-        })
+        if not transcript:
+            print("文字起こしに失敗しました")
+            return
         
         # 議事録生成
         summary_service = MeetingSummaryService()
-        summary = summary_service.generate_summary(
-            transcription_result["text"],
-            meeting_title=meeting_title
-        )
+        summary = summary_service.generate_summary(transcript)
         
-        # ドキュメントとして保存
+        # ファイル保存
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        doc_title = f"{meeting_title}_{timestamp}"
+        transcript_file = Path(document_folder) / f"transcript_{timestamp}.txt"
+        summary_file = Path(document_folder) / f"summary_{timestamp}.txt"
         
-        # テキストファイルとして保存
-        doc_path = document_folder / f"{doc_title}.txt"
-        with open(doc_path, "w", encoding="utf-8") as f:
-            f.write(f"会議名: {meeting_title}\n")
-            f.write(f"日時: {datetime.now().strftime('%Y年%m月%d日 %H:%M')}\n")
-            f.write(f"録画時間: {transcription_result['duration']:.1f}秒\n\n")
-            f.write("=" * 50 + "\n")
-            f.write("議事録\n")
-            f.write("=" * 50 + "\n\n")
+        with open(transcript_file, "w", encoding="utf-8") as f:
+            f.write(transcript)
+        
+        with open(summary_file, "w", encoding="utf-8") as f:
             f.write(summary)
-            f.write("\n\n" + "=" * 50 + "\n")
-            f.write("文字起こし全文\n")
-            f.write("=" * 50 + "\n\n")
-            f.write(transcription_result["text"])
         
-        await manager.broadcast({
-            "type": "document_saved",
-            "path": str(doc_path),
-            "title": doc_title
-        })
-        
-        # Googleドキュメントに保存（設定されている場合）
-        config = ConfigManager.load_config()
-        if config.get("google_docs_enabled"):
+        # Googleドキュメントに保存（オプション）
+        if config.get("google_docs_enabled", False):
             try:
-                google_docs = GoogleDocsService()
-                doc_url = google_docs.create_document(
-                    title=doc_title,
-                    content=f"会議名: {meeting_title}\n\n{summary}\n\n---\n\n文字起こし全文:\n{transcription_result['text']}"
-                )
-                
-                if doc_url:
-                    await manager.broadcast({
-                        "type": "google_docs_created",
-                        "url": doc_url,
-                        "title": doc_title
-                    })
+                docs_service = GoogleDocsService()
+                doc_title = f"議事録_{timestamp}"
+                doc_url = docs_service.create_document(doc_title, summary)
+                print(f"Googleドキュメントに保存しました: {doc_url}")
             except Exception as e:
-                await manager.broadcast({
-                    "type": "error",
-                    "message": f"Googleドキュメント保存エラー: {str(e)}"
-                })
+                print(f"Googleドキュメント保存エラー: {e}")
         
-        # Slackに送信
-        slack_notifier = SlackNotifier()
-        slack_notifier.send_meeting_summary(
-            summary=summary,
-            meeting_title=meeting_title,
-            transcription_text=transcription_result["text"]
-        )
+        # Slack通知（オプション）
+        if Config.SLACK_BOT_TOKEN and Config.SLACK_CHANNEL:
+            try:
+                notifier = SlackNotifier()
+                notifier.send_meeting_summary(
+                    title=recorder_state.get("meeting_title", "会議"),
+                    summary=summary,
+                    transcript=transcript
+                )
+            except Exception as e:
+                print(f"Slack通知エラー: {e}")
         
-        duration_minutes = transcription_result["duration"] / 60
-        cost = duration_minutes * 0.006
-        
+        # WebSocketで通知
         await manager.broadcast({
             "type": "processing_complete",
-            "message": f"処理完了（コスト: ${cost:.4f}）",
-            "cost": cost,
-            "document_path": str(doc_path)
+            "transcript_file": str(transcript_file),
+            "summary_file": str(summary_file)
         })
         
-        # 文字起こしのみモードの場合、一時ファイルを削除
-        if mode == "transcription_only" and isinstance(recorder_state["recorder"], TranscriptionOnlyRecorder):
-            recorder_state["recorder"].cleanup()
-    
     except Exception as e:
-        await manager.broadcast({
-            "type": "error",
-            "message": f"処理エラー: {str(e)}"
-        })
-        import traceback
+        print(f"録画処理エラー: {e}")
         traceback.print_exc()
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket接続"""
+    """WebSocketエンドポイント（クライアント接続用）"""
     await manager.connect(websocket)
-    
-    # 初期状態を送信
-    await websocket.send_json({
-        "type": "status",
-        "data": {
-            "recording": recorder_state["recording"],
-            "zoom_status": recorder_state["zoom_status"],
-            "meeting_active": recorder_state["meeting_active"]
-        }
-    })
-    
     try:
         while True:
-            # Zoom状態を定期的に更新
-            zoom_running = ZoomDetector.is_zoom_running()
-            meeting_active = ZoomDetector.is_meeting_active()
-            
-            zoom_status = "会議中" if meeting_active else ("起動中" if zoom_running else "未検出")
-            
-            if (recorder_state["zoom_status"] != zoom_status or 
-                recorder_state["meeting_active"] != meeting_active):
-                recorder_state["zoom_status"] = zoom_status
-                recorder_state["meeting_active"] = meeting_active
-                
-                await websocket.send_json({
-                    "type": "status_update",
-                    "data": {
-                        "zoom_status": zoom_status,
-                        "meeting_active": meeting_active
-                    }
-                })
-            
-            await asyncio.sleep(2)
-    
+            data = await websocket.receive_text()
+            try:
+                message = json.loads(data)
+                if message.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
+            except:
+                pass
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
 @app.websocket("/ws/agent")
 async def websocket_agent(websocket: WebSocket, token: str = None):
-    """エージェント接続"""
-    if not token:
-        await websocket.close(code=4001, reason="トークンが必要です")
-        return
+    """WebSocketエンドポイント（エージェント接続用）"""
+    # TODO: トークン認証
     
     await websocket.accept()
     agent_id = None
@@ -513,29 +478,45 @@ async def websocket_agent(websocket: WebSocket, token: str = None):
     try:
         # エージェント登録
         message = await websocket.receive_json()
-        if message["type"] == "agent_register":
+        if message.get("type") == "agent_register":
             agent_id = message.get("hostname", "unknown")
             agent_connections[agent_id] = websocket
-            
-            await manager.broadcast({
-                "type": "agent_connected",
-                "agent_id": agent_id
-            })
+            print(f"エージェント登録: {agent_id}")
         
-        # メッセージを待機
+        # エージェントからのメッセージを処理
         while True:
-            message = await websocket.receive_json()
-            await manager.broadcast(message)
-    
+            try:
+                message = await websocket.receive_json()
+                message_type = message.get("type")
+                
+                if message_type == "recording_status":
+                    # エージェントからの録画状態更新
+                    recorder_state["recording"] = message.get("recording", False)
+                    recorder_state["recording_path"] = message.get("recording_path")
+                    
+                    # クライアントに通知
+                    await manager.broadcast({
+                        "type": "recording_status_update",
+                        "recording": recorder_state["recording"],
+                        "recording_path": recorder_state["recording_path"]
+                    })
+                
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                print(f"エージェントメッセージ処理エラー: {e}")
+                traceback.print_exc()
     except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"エージェント接続エラー: {e}")
+        traceback.print_exc()
+    finally:
         if agent_id and agent_id in agent_connections:
             del agent_connections[agent_id]
-            await manager.broadcast({
-                "type": "agent_disconnected",
-                "agent_id": agent_id
-            })
+        print(f"エージェント切断: {agent_id}")
 
-# バックグラウンドタスクでZoom状態を監視
+# 起動時のイベント
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(zoom_status_monitor())
@@ -543,13 +524,16 @@ async def startup_event():
 async def zoom_status_monitor():
     """Zoom状態を監視"""
     while True:
-        zoom_running = ZoomDetector.is_zoom_running()
-        meeting_active = ZoomDetector.is_meeting_active()
-        
-        zoom_status = "会議中" if meeting_active else ("起動中" if zoom_running else "未検出")
-        
-        recorder_state["zoom_status"] = zoom_status
-        recorder_state["meeting_active"] = meeting_active
+        try:
+            zoom_running = ZoomDetector.is_zoom_running()
+            meeting_active = ZoomDetector.is_meeting_active()
+            
+            zoom_status = "会議中" if meeting_active else ("起動中" if zoom_running else "未検出")
+            
+            recorder_state["zoom_status"] = zoom_status
+            recorder_state["meeting_active"] = meeting_active
+        except Exception as e:
+            print(f"Zoom状態監視エラー: {e}")
         
         await asyncio.sleep(2)
 
@@ -557,4 +541,15 @@ if __name__ == "__main__":
     import uvicorn
     # RailwayやRenderなどのクラウド環境では環境変数からポートを取得
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    print(f"サーバーを起動します: 0.0.0.0:{port}")
+    print(f"Python version: {os.sys.version}")
+    print(f"Working directory: {os.getcwd()}")
+    print(f"Frontend directory exists: {frontend_dir.exists()}")
+    print(f"Static directory exists: {static_dir.exists()}")
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    except Exception as e:
+        print(f"起動エラー: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
