@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オンラインスクールチャットボット管理画面</title>
+    <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <header class="header">
+            <h1>📚 オンラインスクールチャットボット管理画面</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="logout()">ログアウト</button>
+            </div>
+        </header>
+
+        <!-- タブ -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('courses')">コース管理</button>
+            <button class="tab-btn" onclick="switchTab('conversations')">会話履歴</button>
+            <button class="tab-btn" onclick="switchTab('pdfs')">PDF教材</button>
+        </div>
+
+        <!-- コース管理タブ -->
+        <div id="coursesTab" class="tab-content active">
+            <div class="card">
+                <h2>コース一覧</h2>
+                <button class="btn btn-primary" onclick="openCourseModal()">+ 新規コース登録</button>
+                <div id="coursesList" class="courses-list"></div>
+            </div>
+        </div>
+
+        <!-- 会話履歴タブ -->
+        <div id="conversationsTab" class="tab-content">
+            <div class="card">
+                <h2>会話履歴</h2>
+                <div class="filters">
+                    <select id="courseFilter" onchange="loadConversations()">
+                        <option value="">全コース</option>
+                    </select>
+                    <input type="number" id="limitInput" value="100" min="1" max="1000" onchange="loadConversations()">
+                    <button class="btn btn-primary" onclick="loadConversations()">更新</button>
+                </div>
+                <div id="conversationsList" class="conversations-list"></div>
+            </div>
+        </div>
+
+        <!-- PDF教材タブ -->
+        <div id="pdfsTab" class="tab-content">
+            <div class="card">
+                <h2>PDF教材アップロード</h2>
+                <div class="upload-section">
+                    <select id="courseSelect">
+                        <option value="">コースを選択</option>
+                    </select>
+                    <input type="file" id="pdfFile" accept=".pdf" />
+                    <button class="btn btn-primary" onclick="uploadPDF()">アップロード</button>
+                </div>
+                <div id="uploadStatus"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- コース登録モーダル -->
+    <div id="courseModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCourseModal()">&times;</span>
+            <h2>新規コース登録</h2>
+            <form id="courseForm" onsubmit="registerCourse(event)">
+                <div class="form-group">
+                    <label>コースID:</label>
+                    <input type="text" id="courseId" required />
+                </div>
+                <div class="form-group">
+                    <label>コース名:</label>
+                    <input type="text" id="courseName" required />
+                </div>
+                <div class="form-group">
+                    <label>担当者Slack ID (オプション):</label>
+                    <input type="text" id="managerSlackId" />
+                </div>
+                <button type="submit" class="btn btn-primary">登録</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/admin.js"></script>
+</body>
+</html>
