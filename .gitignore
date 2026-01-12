@@ -21,3 +21,19 @@ calendar-to-asana/credentials.json
 calendar-to-asana/token.json
 calendar-to-asana/.env
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Online School Bot
+online-school-bot/.env
+online-school-bot/credentials.json
+online-school-bot/backend/__pycache__/
+online-school-bot/**/__pycache__/
+
