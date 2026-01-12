@@ -16,3 +16,8 @@ Thumbs.db
 .env
 .env.local
 
+# Calendar to Asana
+calendar-to-asana/credentials.json
+calendar-to-asana/token.json
+calendar-to-asana/.env
+
