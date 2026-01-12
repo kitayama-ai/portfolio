@@ -1,1 +1,1 @@
-web: cd zoom-recorder-web/backend && python main.py
+web: ./zoom-recorder-web/start.sh
