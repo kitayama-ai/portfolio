@@ -74,6 +74,13 @@ frontend_dir = Path(__file__).parent.parent / "frontend"
 if frontend_dir.exists():
     app.mount("/frontend", StaticFiles(directory=str(frontend_dir)), name="frontend")
 
+# ルートパス: ログインページにリダイレクト
+@app.get("/")
+async def root():
+    """ルートパス: ログインページにリダイレクト"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/frontend/login.html")
+
 # グローバル状態
 recorder_state: Dict = {
     "recording": False,
