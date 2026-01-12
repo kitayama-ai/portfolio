@@ -528,16 +528,22 @@ async def websocket_agent(websocket: WebSocket, token: str = None):
             del agent_connections[agent_id]
         print(f"エージェント切断: {agent_id}")
 
-# 起動時のイベント
-@app.on_event("startup")
-async def startup_event():
-    # Zoom状態監視はローカル環境のみ（クラウド環境ではスキップ）
-    if HAS_LOCAL_FEATURES and os.getenv("RAILWAY_ENVIRONMENT") is None and os.getenv("RENDER") is None:
-        asyncio.create_task(zoom_status_monitor())
-    else:
-        # クラウド環境では固定値
-        recorder_state["zoom_status"] = "クラウド環境"
-        recorder_state["meeting_active"] = False
+# 起動時のイベント（非推奨の@app.on_eventを使用）
+try:
+    @app.on_event("startup")
+    async def startup_event():
+        # Zoom状態監視はローカル環境のみ（クラウド環境ではスキップ）
+        if HAS_LOCAL_FEATURES and os.getenv("RAILWAY_ENVIRONMENT") is None and os.getenv("RENDER") is None:
+            asyncio.create_task(zoom_status_monitor())
+        else:
+            # クラウド環境では固定値
+            recorder_state["zoom_status"] = "クラウド環境"
+            recorder_state["meeting_active"] = False
+except Exception as e:
+    print(f"startup_event設定エラー（無視）: {e}")
+    # クラウド環境では固定値
+    recorder_state["zoom_status"] = "クラウド環境"
+    recorder_state["meeting_active"] = False
 
 async def zoom_status_monitor():
     """Zoom状態を監視（ローカル環境のみ）"""
