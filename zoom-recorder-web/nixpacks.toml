@@ -1,0 +1,9 @@
+# Nixpacks configuration for Railway
+[phases.setup]
+nixPkgs = ["python3", "python3Packages.pip"]
+
+[phases.install]
+cmds = ["cd zoom-recorder-web && pip install -r requirements.txt"]
+
+[start]
+cmd = "cd zoom-recorder-web/backend && python3 main.py"
