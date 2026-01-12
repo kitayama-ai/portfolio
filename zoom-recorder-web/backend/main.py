@@ -1,7 +1,9 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 import asyncio
@@ -9,6 +11,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
+import traceback
 
 from recorder import HeadlessZoomRecorder, TranscriptionOnlyRecorder
 from zoom_detector import ZoomDetector
@@ -21,6 +24,26 @@ from auth import AuthService, verify_token, get_user, create_user, load_users
 from config import Config
 
 app = FastAPI(title="Zoom自動録画ツール")
+
+# エラーハンドラー
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """グローバルエラーハンドラー"""
+    print(f"エラー発生: {type(exc).__name__}: {str(exc)}")
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"サーバーエラー: {str(exc)}"}
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """バリデーションエラーハンドラー"""
+    print(f"バリデーションエラー: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
 
 # CORS設定
 app.add_middleware(
@@ -140,13 +163,24 @@ async def login(request: LoginRequest):
 @app.post("/api/auth/register")
 async def register(request: RegisterRequest):
     """新規登録"""
-    if get_user(request.username):
-        raise HTTPException(status_code=400, detail="このユーザー名は既に使用されています")
-    
-    if create_user(request.username, request.password, request.email):
-        return {"status": "success", "message": "ユーザー登録が完了しました"}
-    else:
-        raise HTTPException(status_code=400, detail="ユーザー登録に失敗しました")
+    try:
+        print(f"登録リクエスト: username={request.username}, email={request.email}")
+        if get_user(request.username):
+            raise HTTPException(status_code=400, detail="このユーザー名は既に使用されています")
+        
+        result = create_user(request.username, request.password, request.email)
+        print(f"create_user結果: {result}")
+        if result:
+            return {"status": "success", "message": "ユーザー登録が完了しました"}
+        else:
+            raise HTTPException(status_code=400, detail="ユーザー登録に失敗しました")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"登録エラー: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"サーバーエラー: {str(e)}")
 
 @app.get("/api/auth/me")
 async def get_current_user(credentials = Depends(verify_token)):

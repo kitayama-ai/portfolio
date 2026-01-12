@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from config import Config
@@ -10,7 +10,6 @@ import json
 from pathlib import Path
 
 security = HTTPBearer()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthService:
     """認証サービス"""
@@ -18,12 +17,25 @@ class AuthService:
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """パスワードを検証"""
-        return pwd_context.verify(plain_password, hashed_password)
+        try:
+            # bcryptで直接検証
+            if isinstance(hashed_password, str):
+                hashed_password = hashed_password.encode('utf-8')
+            if isinstance(plain_password, str):
+                plain_password = plain_password.encode('utf-8')
+            return bcrypt.checkpw(plain_password, hashed_password)
+        except Exception:
+            return False
     
     @staticmethod
     def get_password_hash(password: str) -> str:
         """パスワードをハッシュ化"""
-        return pwd_context.hash(password)
+        if isinstance(password, str):
+            password = password.encode('utf-8')
+        # bcryptで直接ハッシュ化
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password, salt)
+        return hashed.decode('utf-8')
     
     @staticmethod
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -77,13 +89,24 @@ def get_user(username: str):
 
 def create_user(username: str, password: str, email: str):
     """ユーザーを作成"""
-    users = load_users()
-    if username in users:
+    try:
+        users = load_users()
+        if username in users:
+            return False
+        users[username] = {
+            "username": username,
+            "hashed_password": AuthService.get_password_hash(password),
+            "email": email
+        }
+        save_users(users)
+        return True
+    except Exception as e:
+        print(f"ユーザー作成エラー: {e}")
+        import traceback
+        traceback.print_exc()
         return False
-    users[username] = {
-        "username": username,
-        "hashed_password": AuthService.get_password_hash(password),
-        "email": email
-    }
-    save_users(users)
-    return True
+
+# 関数としてエクスポート（main.pyで使用）
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """トークンを検証（関数版）"""
+    return AuthService.verify_token(credentials)
