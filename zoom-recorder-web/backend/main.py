@@ -177,7 +177,11 @@ async def login_page():
 @app.post("/api/auth/login")
 async def login(request: LoginRequest):
     """ログイン"""
-    print(f"ログイン試行: username={request.username}")
+    print(f"ログイン試行: username={request.username}, password_length={len(request.password)}")
+    
+    # 全ユーザーをロードして確認
+    all_users = load_users()
+    print(f"全ユーザー数: {len(all_users)}, ユーザー名一覧: {list(all_users.keys())}")
     
     user = get_user(request.username)
     if not user:
@@ -185,6 +189,8 @@ async def login(request: LoginRequest):
         raise HTTPException(status_code=401, detail="ユーザー名またはパスワードが正しくありません")
     
     print(f"ユーザーが見つかりました: {request.username}, hashed_password存在: {'hashed_password' in user}")
+    if 'hashed_password' in user:
+        print(f"hashed_password長さ: {len(user['hashed_password'])}")
     
     password_valid = AuthService.verify_password(request.password, user["hashed_password"])
     print(f"パスワード検証結果: {password_valid}")
