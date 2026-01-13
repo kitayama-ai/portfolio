@@ -10,9 +10,9 @@ https://render.com/ → GitHubアカウントでログイン
 2. GitHubリポジトリ `kitayama-ai/portfolio` を選択
 3. 以下の設定を入力：
    - **Name**: `zoom-recorder-web`
-   - **Root Directory**: `zoom-recorder-web`
-   - **Build Command**: `cd zoom-recorder-web && pip install -r requirements.txt`
-   - **Start Command**: `cd zoom-recorder-web/backend && python main.py`
+   - **Root Directory**: `zoom-recorder-web`（重要！）
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `cd backend && python main.py`
    - **Plan**: `Free`
 
 ### ステップ3: 環境変数設定・デプロイ

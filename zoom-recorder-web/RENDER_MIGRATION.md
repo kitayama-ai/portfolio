@@ -32,9 +32,10 @@
 - **Root Directory**: `zoom-recorder-web/backend`
 
 **ビルド設定:**
+- **Root Directory**: `zoom-recorder-web`（重要！）
 - **Environment**: `Python 3`
-- **Build Command**: `cd zoom-recorder-web && pip install -r requirements.txt`
-- **Start Command**: `cd zoom-recorder-web/backend && python3 main.py`
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `cd backend && python3 main.py`
 
 **インスタンスタイプ:**
 - **Free**（無料プラン）を選択
