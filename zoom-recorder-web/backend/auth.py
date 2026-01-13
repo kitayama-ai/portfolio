@@ -85,21 +85,25 @@ def load_users():
     print(f"ユーザーファイルパス: {USERS_DB_FILE}")
     print(f"ユーザーファイル存在: {USERS_DB_FILE.exists()}")
     
+    # 環境変数の確認
+    default_username = os.getenv("DEFAULT_USERNAME")
+    default_password = os.getenv("DEFAULT_PASSWORD")
+    default_email = os.getenv("DEFAULT_EMAIL")
+    print(f"環境変数確認: DEFAULT_USERNAME={default_username is not None}, DEFAULT_PASSWORD={default_password is not None}, DEFAULT_EMAIL={default_email}")
+    
     users = {}
     
     # 環境変数から初期ユーザーを読み込む（Render環境用）
-    default_username = os.getenv("DEFAULT_USERNAME")
-    default_password = os.getenv("DEFAULT_PASSWORD")
     if default_username and default_password:
-        print(f"環境変数から初期ユーザーを読み込み: {default_username}")
+        print(f"環境変数から初期ユーザーを読み込み: username={default_username}, password_length={len(default_password)}")
         users[default_username] = {
             "username": default_username,
             "hashed_password": AuthService.get_password_hash(default_password),
-            "email": os.getenv("DEFAULT_EMAIL", f"{default_username}@example.com"),
+            "email": default_email or f"{default_username}@example.com",
             "_from_env": True,
             "_plain_password": default_password  # 検証用に平文パスワードも保存
         }
-        print(f"環境変数ユーザーを追加: {default_username}")
+        print(f"環境変数ユーザーを追加: {default_username}, email={users[default_username]['email']}")
         # 環境変数のユーザーをファイルに保存（存在する場合、ただし平文パスワードは保存しない）
         if not USERS_DB_FILE.exists():
             try:
@@ -109,6 +113,8 @@ def load_users():
                 save_users(save_users_dict)
             except Exception as e:
                 print(f"環境変数ユーザーのファイル保存に失敗（続行）: {e}")
+    else:
+        print("環境変数からユーザーを読み込めませんでした（DEFAULT_USERNAMEまたはDEFAULT_PASSWORDが設定されていません）")
     
     # ファイルからユーザーを読み込む
     if USERS_DB_FILE.exists():
@@ -147,22 +153,24 @@ def get_user(username: str):
     users = load_users()  # 毎回load_usersを呼ぶことで、環境変数のユーザーも含まれる
     user = users.get(username)
     if user:
-        print(f"ユーザーが見つかりました: {username}, hashed_password存在: {'hashed_password' in user}")
+        print(f"ユーザーが見つかりました: {username}, hashed_password存在: {'hashed_password' in user}, _from_env={user.get('_from_env', False)}")
         # 環境変数ユーザーの場合、特別なマーカーを追加
         if user.get("_from_env", False):
-            print(f"環境変数ユーザーを検出: {username}")
+            print(f"環境変数ユーザーを検出: {username}, _plain_password存在: {'_plain_password' in user}")
     else:
         print(f"ユーザーが見つかりません: {username}, 利用可能なユーザー: {list(users.keys())}")
         # 環境変数から直接読み込む（ファイルが存在しない場合のフォールバック）
         default_username = os.getenv("DEFAULT_USERNAME")
         default_password = os.getenv("DEFAULT_PASSWORD")
+        default_email = os.getenv("DEFAULT_EMAIL")
+        print(f"フォールバック確認: default_username={default_username}, username={username}, match={default_username == username}")
         if default_username == username and default_password:
             print(f"環境変数から直接ユーザーを読み込み: {username}")
             # 環境変数ユーザーは、平文パスワードを保存して検証時に使用
             return {
                 "username": default_username,
                 "hashed_password": AuthService.get_password_hash(default_password),
-                "email": os.getenv("DEFAULT_EMAIL", f"{default_username}@example.com"),
+                "email": default_email or f"{default_username}@example.com",
                 "_from_env": True,
                 "_plain_password": default_password  # 検証用に平文パスワードも保存
             }
