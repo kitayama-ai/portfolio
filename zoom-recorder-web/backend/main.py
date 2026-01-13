@@ -192,8 +192,13 @@ async def login(request: LoginRequest):
     if 'hashed_password' in user:
         print(f"hashed_password長さ: {len(user['hashed_password'])}")
     
-    password_valid = AuthService.verify_password(request.password, user["hashed_password"])
-    print(f"パスワード検証結果: {password_valid}")
+    # 環境変数ユーザーの場合、平文パスワードで直接比較
+    if user.get("_from_env", False) and user.get("_plain_password"):
+        password_valid = (request.password == user["_plain_password"])
+        print(f"環境変数ユーザーのパスワード検証（平文比較）: {password_valid}")
+    else:
+        password_valid = AuthService.verify_password(request.password, user["hashed_password"])
+        print(f"パスワード検証結果: {password_valid}")
     
     if not password_valid:
         print(f"パスワードが一致しません: {request.username}")
