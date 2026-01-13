@@ -5,7 +5,7 @@ class ZoomRecorderApp {
         this.wsBaseUrl = window.WS_BASE_URL || '';
         this.token = localStorage.getItem('access_token');
         if (!this.token) {
-            window.location.href = '/login.html';
+            window.location.href = '/frontend/login.html';
             return;
         }
         this.ws = null;
@@ -140,7 +140,7 @@ class ZoomRecorderApp {
         
         if (response.status === 401) {
             localStorage.removeItem('access_token');
-            window.location.href = '/login.html';
+            window.location.href = '/frontend/login.html';
             return null;
         }
         
@@ -373,7 +373,7 @@ async function saveSettings() {
 function logout() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('username');
-    window.location.href = '/login.html';
+    window.location.href = '/frontend/login.html';
 }
 
 // モーダル外クリックで閉じる
@@ -386,5 +386,5 @@ document.addEventListener('click', (e) => {
 
 // アプリを起動
 document.addEventListener('DOMContentLoaded', () => {
-    new ZoomRecorderApp();
+    window.app = new ZoomRecorderApp();
 });

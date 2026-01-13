@@ -85,11 +85,16 @@ if frontend_dir.exists():
     # 静的ファイルとして直接提供
     app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="frontend_static")
 
-# ルートパス: ログインページにリダイレクト
+# ルートパス: トークンチェックして適切なページにリダイレクト
 @app.get("/")
 async def root():
-    """ルートパス: ログインページにリダイレクト"""
-    from fastapi.responses import RedirectResponse
+    """ルートパス: トークンチェックして適切なページにリダイレクト"""
+    from fastapi.responses import RedirectResponse, HTMLResponse
+    # フロントエンドのindex.htmlを返す（トークンチェックはフロントエンドで行う）
+    index_file = frontend_dir / "index.html"
+    if index_file.exists():
+        with open(index_file, "r", encoding="utf-8") as f:
+            return f.read()
     return RedirectResponse(url="/frontend/login.html")
 
 # グローバル状態

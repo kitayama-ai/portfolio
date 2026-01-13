@@ -20,7 +20,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         if (response.ok) {
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('username', data.username);
-            window.location.href = '/';
+            // フロントエンドのindex.htmlにリダイレクト
+            window.location.href = '/frontend/index.html';
         } else {
             errorMessage.textContent = data.detail || 'ログインに失敗しました';
             errorMessage.style.display = 'block';
