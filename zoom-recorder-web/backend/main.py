@@ -604,6 +604,32 @@ if __name__ == "__main__":
     print(f"Working directory: {os.getcwd()}")
     print(f"Frontend directory exists: {frontend_dir.exists()}")
     print(f"Static directory exists: {static_dir.exists()}")
+    
+    # 起動時に環境変数とユーザー情報を確認
+    print("=" * 50)
+    print("起動時環境変数確認:")
+    default_username = os.getenv("DEFAULT_USERNAME")
+    default_password = os.getenv("DEFAULT_PASSWORD")
+    default_email = os.getenv("DEFAULT_EMAIL")
+    print(f"  DEFAULT_USERNAME: {default_username if default_username else '未設定'}")
+    print(f"  DEFAULT_PASSWORD: {'設定済み' if default_password else '未設定'}")
+    print(f"  DEFAULT_EMAIL: {default_email if default_email else '未設定'}")
+    
+    # ユーザー情報を読み込んで確認
+    try:
+        users = load_users()
+        print(f"起動時ユーザー数: {len(users)}")
+        if users:
+            print(f"起動時ユーザー名一覧: {list(users.keys())}")
+            for username, user_data in users.items():
+                is_env = user_data.get("_from_env", False)
+                print(f"  - {username}: {'環境変数ユーザー' if is_env else 'ファイルユーザー'}")
+    except Exception as e:
+        print(f"起動時ユーザー読み込みエラー: {e}")
+        import traceback
+        traceback.print_exc()
+    print("=" * 50)
+    
     try:
         uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
     except Exception as e:
