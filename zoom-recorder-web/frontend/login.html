@@ -25,7 +25,7 @@
                     <label for="password">パスワード</label>
                     <input type="password" id="password" class="form-input" required>
                 </div>
-                <button type="submit" class="btn btn-primary btn-large">ログイン</button>
+                <button type="submit" class="btn btn-primary btn-large" id="loginButton">ログイン</button>
             </form>
             
             <div class="login-footer">
@@ -33,6 +33,7 @@
             </div>
             
             <div id="errorMessage" class="error-message" style="display: none;"></div>
+            <div id="loadingMessage" class="loading-message" style="display: none;">ログイン中...</div>
         </div>
         
         <!-- 新規登録モーダル -->

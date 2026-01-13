@@ -23,8 +23,13 @@ class AuthService:
                 hashed_password = hashed_password.encode('utf-8')
             if isinstance(plain_password, str):
                 plain_password = plain_password.encode('utf-8')
-            return bcrypt.checkpw(plain_password, hashed_password)
-        except Exception:
+            result = bcrypt.checkpw(plain_password, hashed_password)
+            print(f"パスワード検証: plain_length={len(plain_password)}, hashed_length={len(hashed_password)}, result={result}")
+            return result
+        except Exception as e:
+            print(f"パスワード検証エラー: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     @staticmethod

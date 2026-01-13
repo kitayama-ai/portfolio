@@ -177,16 +177,27 @@ async def login_page():
 @app.post("/api/auth/login")
 async def login(request: LoginRequest):
     """ログイン"""
+    print(f"ログイン試行: username={request.username}")
+    
     user = get_user(request.username)
     if not user:
+        print(f"ユーザーが見つかりません: {request.username}")
         raise HTTPException(status_code=401, detail="ユーザー名またはパスワードが正しくありません")
     
-    if not AuthService.verify_password(request.password, user["hashed_password"]):
+    print(f"ユーザーが見つかりました: {request.username}, hashed_password存在: {'hashed_password' in user}")
+    
+    password_valid = AuthService.verify_password(request.password, user["hashed_password"])
+    print(f"パスワード検証結果: {password_valid}")
+    
+    if not password_valid:
+        print(f"パスワードが一致しません: {request.username}")
         raise HTTPException(status_code=401, detail="ユーザー名またはパスワードが正しくありません")
     
     access_token = AuthService.create_access_token(
         data={"sub": request.username}
     )
+    
+    print(f"ログイン成功: {request.username}")
     
     return {
         "access_token": access_token,
