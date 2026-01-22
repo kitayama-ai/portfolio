@@ -1,0 +1,132 @@
+body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    background-color: #f0f2f5;
+    margin: 0;
+    padding: 0;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #fff;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    min-height: 100vh;
+}
+
+header {
+    background-color: #cc0000;
+    color: white;
+    text-align: center;
+    padding: 10px;
+    font-weight: bold;
+}
+
+main {
+    padding: 40px 20px;
+    text-align: center;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.highlight {
+    background: linear-gradient(transparent 60%, #ffff00 60%);
+}
+
+.sub-headline {
+    font-size: 1.2rem;
+    color: #555;
+    margin-bottom: 40px;
+}
+
+.vsl-placeholder {
+    width: 100%;
+    max-width: 640px;
+    height: 360px;
+    background-color: #000;
+    margin: 0 auto 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-radius: 8px;
+}
+
+.video-mock {
+    color: white;
+    font-size: 4rem;
+    cursor: pointer;
+}
+
+.form-section {
+    background-color: #f9f9f9;
+    padding: 30px;
+    border-radius: 8px;
+    border: 2px solid #eee;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.input-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box; /* 重要: paddingを含めた幅計算 */
+}
+
+.cta-button {
+    background-color: #00c300; /* LINE Green風 */
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    transition: background-color 0.3s;
+}
+
+.cta-button:hover {
+    background-color: #00a300;
+}
+
+.form-note {
+    font-size: 0.9rem;
+    color: #cc0000;
+    margin-bottom: 20px;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-size: 0.8rem;
+    border-top: 1px solid #eee;
+}
+
+@media (max-width: 600px) {
+    h1 {
+        font-size: 1.8rem;
+    }
+    .vsl-placeholder {
+        height: 200px;
+    }
+}
