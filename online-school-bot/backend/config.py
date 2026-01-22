@@ -30,8 +30,9 @@ class Config:
     GOOGLE_CREDENTIALS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH", "credentials.json")
     GOOGLE_SPREADSHEET_ID = os.getenv("GOOGLE_SPREADSHEET_ID", "")
     
-    # デフォルトパス
-    CONFIG_DIR = Path.home() / ".online_school_bot"
+    # デフォルトパス（ワークスペース内のdataディレクトリに保存）
+    _backend_dir = Path(__file__).parent
+    CONFIG_DIR = _backend_dir / "data"
     CONFIG_FILE = CONFIG_DIR / "config.json"
     PDF_STORAGE_DIR = CONFIG_DIR / "pdfs"
     VECTOR_STORAGE_DIR = CONFIG_DIR / "vectors"

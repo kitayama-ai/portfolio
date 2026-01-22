@@ -164,3 +164,91 @@ class ChatworkBotService:
         except Exception as e:
             print(f"Chatworkファイルダウンロードエラー: {e}")
             return None
+    
+    def create_dm_room(self, account_id: int, initial_message: str = "") -> Optional[int]:
+        """DMルームを作成（または既存のDMルームを取得）"""
+        try:
+            # Chatwork APIでは、DMルームは自動的に作成されるため、
+            # まず既存のルーム一覧を取得してDMルームを探す
+            url = f"{self.API_BASE_URL}/rooms"
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            
+            rooms = response.json()
+            my_info = self.get_my_info()
+            if not my_info:
+                return None
+            
+            my_account_id = my_info.get("account_id")
+            
+            # 既存のDMルームを探す
+            for room in rooms:
+                if room.get("type") == "my":  # DMルーム
+                    members = room.get("members", [])
+                    # 2人のみのルームで、自分と指定されたユーザーが含まれているか確認
+                    if len(members) == 2:
+                        member_ids = [m.get("account_id") for m in members]
+                        if my_account_id in member_ids and account_id in member_ids:
+                            room_id = room.get("room_id")
+                            # 初期メッセージがあれば送信
+                            if initial_message and room_id:
+                                self.send_message(room_id, initial_message)
+                            return room_id
+            
+            # 既存のDMルームが見つからない場合、新しいDMルームを作成
+            # Chatwork APIでは、DMルームはメッセージを送信することで自動的に作成される
+            # そのため、まずユーザーにメッセージを送信する必要がある
+            # ただし、room_idが必要なので、まずルームを作成する必要がある
+            # Chatwork APIの制約により、DMルームは直接作成できないため、
+            # ユーザーがボットにメッセージを送信するか、ボットがユーザーにメッセージを送信する必要がある
+            
+            # 代替案：グループルームを作成してから、メンバーを2人だけにする
+            # ただし、これはDMではなくグループチャットになってしまう
+            
+            # 実用的な解決策：ユーザーがボットにDMを送信するか、
+            # ボットがユーザーにメッセージを送信してDMルームを作成する
+            # そのため、このメソッドは既存のDMルームを探すだけにする
+            
+            return None
+        except Exception as e:
+            print(f"Chatwork DMルーム作成エラー: {e}")
+            return None
+    
+    def get_rooms(self) -> Optional[list]:
+        """ルーム一覧を取得"""
+        try:
+            url = f"{self.API_BASE_URL}/rooms"
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            print(f"Chatworkルーム一覧取得エラー: {e}")
+            return None
+    
+    def get_unread_messages(self, room_id: int) -> Optional[list]:
+        """ルームの未読メッセージを取得（最大100件）"""
+        try:
+            url = f"{self.API_BASE_URL}/rooms/{room_id}/messages"
+            params = {
+                "force": 0  # 0=未読のみ、1=全メッセージ
+            }
+            response = requests.get(url, headers=self.headers, params=params)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Chatwork未読メッセージ取得エラー (room_id={room_id}): {e}")
+            return None
+    
+    def mark_messages_as_read(self, room_id: int, message_ids: list) -> bool:
+        """メッセージを既読にする"""
+        try:
+            url = f"{self.API_BASE_URL}/rooms/{room_id}/messages/read"
+            data = {
+                "message_id": ",".join(str(mid) for mid in message_ids)
+            }
+            response = requests.put(url, headers=self.headers, data=data)
+            response.raise_for_status()
+            return True
+        except requests.exceptions.RequestException as e:
+            print(f"Chatwork既読マークエラー (room_id={room_id}): {e}")
+            return False

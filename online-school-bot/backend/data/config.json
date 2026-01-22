@@ -1,0 +1,23 @@
+{
+  "001": {
+    "course_id": "001",
+    "course_name": "SNS",
+    "manager_slack_id": null,
+    "platform": "chatwork",
+    "created_at": "1768215857.1318326"
+  },
+  "002": {
+    "course_id": "002",
+    "course_name": "SEO",
+    "manager_slack_id": null,
+    "platform": "chatwork",
+    "created_at": "1768215857.1318326"
+  },
+  "003": {
+    "course_id": "003",
+    "course_name": "AIマーケター",
+    "manager_slack_id": null,
+    "platform": "chatwork",
+    "created_at": "1768215857.1318326"
+  }
+}

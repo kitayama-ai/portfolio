@@ -201,3 +201,68 @@ class SpreadsheetService:
         except HttpError as error:
             print(f'会話履歴取得エラー: {error}')
             return []
+    
+    def read_spreadsheet_for_rag(self, spreadsheet_id: str, sheet_name: str = None) -> str:
+        """スプレッドシートからデータを読み込んでRAG用のテキストに変換（リアルタイム読み込み）"""
+        if not self.service:
+            raise Exception("Google Sheetsサービスが利用できません")
+        
+        try:
+            # スプレッドシートのメタデータを取得
+            spreadsheet = self.service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+            
+            # シート名が指定されていない場合は最初のシートを使用
+            if not sheet_name:
+                sheet_name = spreadsheet['sheets'][0]['properties']['title']
+            
+            # シートのデータを取得
+            result = self.service.spreadsheets().values().get(
+                spreadsheetId=spreadsheet_id,
+                range=f"{sheet_name}!A:Z"  # A列からZ列まで
+            ).execute()
+            
+            values = result.get('values', [])
+            if not values:
+                return ""
+            
+            # データをテキスト形式に変換
+            text_parts = [f"シート名: {sheet_name}\n"]
+            
+            # ヘッダー行がある場合は使用
+            if len(values) > 0:
+                headers = values[0]
+                text_parts.append("ヘッダー: " + " | ".join(str(h) for h in headers) + "\n\n")
+                
+                # データ行を処理
+                for row in values[1:]:
+                    row_text = " | ".join(str(cell) if cell else "" for cell in row)
+                    text_parts.append(row_text)
+            
+            return "\n".join(text_parts)
+        
+        except HttpError as error:
+            print(f'スプレッドシート読み込みエラー: {error}')
+            raise Exception(f"スプレッドシート読み込み失敗: {str(error)}")
+    
+    def get_spreadsheet_info(self, spreadsheet_id: str) -> Dict:
+        """スプレッドシートの情報を取得"""
+        if not self.service:
+            raise Exception("Google Sheetsサービスが利用できません")
+        
+        try:
+            spreadsheet = self.service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+            sheets = []
+            for sheet in spreadsheet.get('sheets', []):
+                sheets.append({
+                    'title': sheet['properties']['title'],
+                    'sheet_id': sheet['properties']['sheetId']
+                })
+            
+            return {
+                'spreadsheet_id': spreadsheet_id,
+                'title': spreadsheet['properties']['title'],
+                'sheets': sheets
+            }
+        except HttpError as error:
+            print(f'スプレッドシート情報取得エラー: {error}')
+            raise Exception(f"スプレッドシート情報取得失敗: {str(error)}")

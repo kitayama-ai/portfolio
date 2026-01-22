@@ -50,10 +50,14 @@ async function loadCourses() {
         const coursesList = document.getElementById('coursesList');
         const courseSelect = document.getElementById('courseSelect');
         const courseFilter = document.getElementById('courseFilter');
+        const spreadsheetCourseSelect = document.getElementById('spreadsheetCourseSelect');
         
         coursesList.innerHTML = '';
         courseSelect.innerHTML = '<option value="">コースを選択</option>';
         courseFilter.innerHTML = '<option value="">全コース</option>';
+        if (spreadsheetCourseSelect) {
+            spreadsheetCourseSelect.innerHTML = '<option value="">コースを選択</option>';
+        }
         
         data.courses.forEach(course => {
             // コース一覧
@@ -77,6 +81,13 @@ async function loadCourses() {
             option2.value = course.course_id;
             option2.textContent = course.course_name;
             courseFilter.appendChild(option2);
+            
+            if (spreadsheetCourseSelect) {
+                const option3 = document.createElement('option');
+                option3.value = course.course_id;
+                option3.textContent = course.course_name;
+                spreadsheetCourseSelect.appendChild(option3);
+            }
         });
     } catch (error) {
         alert('コース一覧の読み込みに失敗しました: ' + error.message);
@@ -173,6 +184,189 @@ async function loadConversations() {
 }
 
 // PDFをアップロード
+// 教材タイプを変更
+function changeMaterialType() {
+    const materialType = document.getElementById('materialType').value;
+    const fileUploadSection = document.getElementById('fileUploadSection');
+    const spreadsheetSection = document.getElementById('spreadsheetSection');
+    const materialFile = document.getElementById('materialFile');
+    
+    if (materialType === 'spreadsheet') {
+        fileUploadSection.style.display = 'none';
+        spreadsheetSection.style.display = 'block';
+    } else {
+        fileUploadSection.style.display = 'block';
+        spreadsheetSection.style.display = 'none';
+        
+        // ファイルタイプに応じてaccept属性を変更
+        if (materialType === 'pdf') {
+            materialFile.accept = '.pdf';
+        } else if (materialType === 'excel') {
+            materialFile.accept = '.xlsx,.xls';
+        } else if (materialType === 'csv') {
+            materialFile.accept = '.csv';
+        }
+    }
+}
+
+// 教材をアップロード（PDF/Excel/CSV）
+async function uploadMaterial() {
+    const courseId = document.getElementById('courseSelect').value;
+    const materialType = document.getElementById('materialType').value;
+    const fileInput = document.getElementById('materialFile');
+    const statusDiv = document.getElementById('uploadStatus');
+    
+    if (!courseId) {
+        statusDiv.innerHTML = '<div class="error">コースを選択してください</div>';
+        return;
+    }
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        statusDiv.innerHTML = '<div class="error">ファイルを選択してください</div>';
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    statusDiv.innerHTML = '<div>アップロード中...</div>';
+    
+    try {
+        let endpoint;
+        if (materialType === 'pdf') {
+            endpoint = `/courses/${courseId}/pdf`;
+        } else if (materialType === 'excel') {
+            endpoint = `/courses/${courseId}/excel`;
+        } else if (materialType === 'csv') {
+            endpoint = `/courses/${courseId}/csv`;
+        } else {
+            throw new Error('サポートされていないファイルタイプです');
+        }
+        
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'アップロードに失敗しました');
+        }
+        
+        const data = await response.json();
+        statusDiv.innerHTML = `<div class="success">${materialType.toUpperCase()}ファイルのアップロードが完了しました！<br>チャンク数: ${data.data.chunk_count}</div>`;
+        fileInput.value = '';
+    } catch (error) {
+        statusDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+    }
+}
+
+// GoogleスプレッドシートURLからIDを抽出
+function extractSpreadsheetId(url) {
+    if (!url) return null;
+    
+    // URL形式: https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit
+    const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (match && match[1]) {
+        return match[1];
+    }
+    
+    // 既にID形式の場合（直接IDが入力された場合）
+    if (url.match(/^[a-zA-Z0-9-_]+$/)) {
+        return url;
+    }
+    
+    return null;
+}
+
+// Googleスプレッドシートを連携
+async function linkSpreadsheet() {
+    const courseId = document.getElementById('spreadsheetCourseSelect').value;
+    const spreadsheetUrl = document.getElementById('spreadsheetUrl').value;
+    const sheetName = document.getElementById('sheetName').value;
+    const statusDiv = document.getElementById('uploadStatus');
+    
+    if (!courseId) {
+        statusDiv.innerHTML = '<div class="error">コースを選択してください</div>';
+        return;
+    }
+    
+    if (!spreadsheetUrl) {
+        statusDiv.innerHTML = '<div class="error">GoogleスプレッドシートのURLを入力してください</div>';
+        return;
+    }
+    
+    // URLからスプレッドシートIDを抽出
+    const spreadsheetId = extractSpreadsheetId(spreadsheetUrl);
+    if (!spreadsheetId) {
+        statusDiv.innerHTML = '<div class="error">正しいGoogleスプレッドシートのURLを入力してください</div>';
+        return;
+    }
+    
+    statusDiv.innerHTML = '<div>スプレッドシートを連携中...</div>';
+    
+    try {
+        const data = await apiCall(`/courses/${courseId}/spreadsheet`, {
+            method: 'POST',
+            body: JSON.stringify({
+                spreadsheet_id: spreadsheetId,
+                sheet_name: sheetName || null
+            })
+        });
+        
+        statusDiv.innerHTML = `<div class="success">スプレッドシートの連携が完了しました！<br>チャンク数: ${data.data.chunk_count}<br>リアルタイム更新が有効です</div>`;
+        document.getElementById('spreadsheetUrl').value = '';
+        document.getElementById('sheetName').value = '';
+    } catch (error) {
+        statusDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+    }
+}
+
+// Googleスプレッドシートを再読み込み
+async function refreshSpreadsheet() {
+    const courseId = document.getElementById('spreadsheetCourseSelect').value;
+    const spreadsheetUrl = document.getElementById('spreadsheetUrl').value;
+    const sheetName = document.getElementById('sheetName').value;
+    const statusDiv = document.getElementById('uploadStatus');
+    
+    if (!courseId) {
+        statusDiv.innerHTML = '<div class="error">コースを選択してください</div>';
+        return;
+    }
+    
+    if (!spreadsheetUrl) {
+        statusDiv.innerHTML = '<div class="error">GoogleスプレッドシートのURLを入力してください</div>';
+        return;
+    }
+    
+    // URLからスプレッドシートIDを抽出
+    const spreadsheetId = extractSpreadsheetId(spreadsheetUrl);
+    if (!spreadsheetId) {
+        statusDiv.innerHTML = '<div class="error">正しいGoogleスプレッドシートのURLを入力してください</div>';
+        return;
+    }
+    
+    statusDiv.innerHTML = '<div>スプレッドシートを再読み込み中...</div>';
+    
+    try {
+        const data = await apiCall(`/courses/${courseId}/spreadsheet/refresh`, {
+            method: 'POST',
+            body: JSON.stringify({
+                spreadsheet_id: spreadsheetId,
+                sheet_name: sheetName || null
+            })
+        });
+        
+        statusDiv.innerHTML = `<div class="success">スプレッドシートの再読み込みが完了しました！<br>チャンク数: ${data.data.chunk_count}</div>`;
+    } catch (error) {
+        statusDiv.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+    }
+}
+
 async function uploadPDF() {
     const courseId = document.getElementById('courseSelect').value;
     const fileInput = document.getElementById('pdfFile');

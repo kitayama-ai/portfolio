@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>オンラインスクールチャットボット管理画面</title>
+    <title>ISAIチャットボット管理画面</title>
     <link rel="stylesheet" href="/static/admin.css">
 </head>
 <body>
     <div class="container">
         <!-- ヘッダー -->
         <header class="header">
-            <h1>📚 オンラインスクールチャットボット管理画面</h1>
+            <h1>📚 ISAIチャットボット管理画面</h1>
             <div class="header-actions">
                 <button class="btn btn-secondary" onclick="logout()">ログアウト</button>
             </div>
@@ -20,7 +20,7 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('courses')">コース管理</button>
             <button class="tab-btn" onclick="switchTab('conversations')">会話履歴</button>
-            <button class="tab-btn" onclick="switchTab('pdfs')">PDF教材</button>
+            <button class="tab-btn" onclick="switchTab('materials')">教材管理</button>
         </div>
 
         <!-- コース管理タブ -->
@@ -47,17 +47,45 @@
             </div>
         </div>
 
-        <!-- PDF教材タブ -->
-        <div id="pdfsTab" class="tab-content">
+        <!-- 教材管理タブ -->
+        <div id="materialsTab" class="tab-content">
             <div class="card">
-                <h2>PDF教材アップロード</h2>
-                <div class="upload-section">
+                <h2>教材アップロード・連携</h2>
+                
+                <!-- ファイルタイプ選択 -->
+                <div class="upload-section" style="margin-bottom: 20px;">
+                    <label>教材タイプ:</label>
+                    <select id="materialType" onchange="changeMaterialType()">
+                        <option value="pdf">PDF</option>
+                        <option value="excel">Excel (.xlsx, .xls)</option>
+                        <option value="csv">CSV</option>
+                        <option value="spreadsheet">Googleスプレッドシート</option>
+                    </select>
+                </div>
+                
+                <!-- PDF/Excel/CSVアップロード -->
+                <div id="fileUploadSection" class="upload-section">
                     <select id="courseSelect">
                         <option value="">コースを選択</option>
                     </select>
-                    <input type="file" id="pdfFile" accept=".pdf" />
-                    <button class="btn btn-primary" onclick="uploadPDF()">アップロード</button>
+                    <input type="file" id="materialFile" accept=".pdf,.xlsx,.xls,.csv" />
+                    <button class="btn btn-primary" onclick="uploadMaterial()">アップロード</button>
                 </div>
+                
+                <!-- スプレッドシート連携 -->
+                <div id="spreadsheetSection" class="upload-section" style="display: none;">
+                    <select id="spreadsheetCourseSelect">
+                        <option value="">コースを選択</option>
+                    </select>
+                    <input type="text" id="spreadsheetUrl" placeholder="GoogleスプレッドシートのURL" style="width: 400px;" />
+                    <input type="text" id="sheetName" placeholder="シート名（オプション）" />
+                    <button class="btn btn-primary" onclick="linkSpreadsheet()">連携</button>
+                    <button class="btn btn-secondary" onclick="refreshSpreadsheet()">再読み込み</button>
+                    <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                        💡 GoogleスプレッドシートのURLを貼り付けてください（例: https://docs.google.com/spreadsheets/d/...）
+                    </div>
+                </div>
+                
                 <div id="uploadStatus"></div>
             </div>
         </div>

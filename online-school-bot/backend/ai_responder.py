@@ -1,6 +1,8 @@
 from openai import OpenAI
 from config import Config
 from pdf_processor import PDFProcessor
+from excel_processor import ExcelProcessor
+from spreadsheet import SpreadsheetService
 from typing import List, Dict, Optional
 import json
 
@@ -9,7 +11,18 @@ class AIResponder:
     
     def __init__(self):
         self.client = OpenAI(api_key=Config.OPENAI_API_KEY) if Config.OPENAI_API_KEY else None
-        self.pdf_processor = PDFProcessor()
+        try:
+            self.pdf_processor = PDFProcessor()
+        except:
+            self.pdf_processor = None
+        try:
+            self.excel_processor = ExcelProcessor()
+        except:
+            self.excel_processor = None
+        try:
+            self.spreadsheet_service = SpreadsheetService()
+        except:
+            self.spreadsheet_service = None
     
     def search_web(self, query: str) -> Optional[str]:
         """ネット検索（OpenAIの関数呼び出し機能を使用）"""
@@ -25,7 +38,7 @@ class AIResponder:
         if not self.client:
             return "申し訳ございません。AIサービスが利用できません。"
         
-        # 教材から関連情報を検索
+        # 教材から関連情報を検索（PDF、Excel、CSV、スプレッドシートすべてから）
         relevant_chunks = []
         try:
             # ユーザーの質問をベクトル化
@@ -34,11 +47,54 @@ class AIResponder:
                 input=[user_message]
             ).data[0].embedding
             
-            # 類似チャンクを検索
-            similar_chunks = self.pdf_processor.search_similar_chunks(
-                query_embedding, course_id, top_k=5
-            )
-            relevant_chunks = [chunk["chunk"] for chunk in similar_chunks if chunk["similarity"] > 0.7]
+            # PDFから検索
+            if self.pdf_processor:
+                try:
+                    similar_chunks = self.pdf_processor.search_similar_chunks(
+                        query_embedding, course_id, top_k=5
+                    )
+                    relevant_chunks.extend([chunk["chunk"] for chunk in similar_chunks if chunk["similarity"] > 0.7])
+                except Exception as e:
+                    print(f"PDF検索エラー: {e}")
+            
+            # Excel/CSVから検索
+            if self.excel_processor:
+                try:
+                    similar_chunks = self.excel_processor.search_similar_chunks(
+                        query_embedding, course_id, top_k=5
+                    )
+                    relevant_chunks.extend([chunk["chunk"] for chunk in similar_chunks if chunk["similarity"] > 0.7])
+                except Exception as e:
+                    print(f"Excel/CSV検索エラー: {e}")
+            
+            # スプレッドシートから検索（リアルタイム読み込み）
+            if self.excel_processor:
+                try:
+                    # スプレッドシートのベクトルファイルを検索
+                    from pathlib import Path
+                    vector_dir = Config.VECTOR_STORAGE_DIR
+                    spreadsheet_files = list(vector_dir.glob(f"{course_id}_spreadsheet_*.json"))
+                    
+                    for spreadsheet_file in spreadsheet_files:
+                        with open(spreadsheet_file, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            if "embeddings" in data and "chunks" in data:
+                                # コサイン類似度を計算
+                                import numpy as np
+                                query_vec = np.array(query_embedding)
+                                similarities = []
+                                
+                                for i, emb in enumerate(data["embeddings"]):
+                                    emb_vec = np.array(emb)
+                                    similarity = np.dot(query_vec, emb_vec) / (np.linalg.norm(query_vec) * np.linalg.norm(emb_vec))
+                                    if similarity > 0.7:
+                                        similarities.append((similarity, i, data["chunks"][i]))
+                                
+                                similarities.sort(reverse=True, key=lambda x: x[0])
+                                relevant_chunks.extend([chunk for _, _, chunk in similarities[:5]])
+                except Exception as e:
+                    print(f"スプレッドシート検索エラー: {e}")
+                    
         except Exception as e:
             print(f"教材検索エラー: {e}")
         
