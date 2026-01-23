@@ -1,13 +1,14 @@
 import os
 import requests
 from typing import Optional, Dict, Any
+from tools_definition import ALL_TOOLS
 
 class VapiClient:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("VAPI_API_KEY")
         self.base_url = "https://api.vapi.ai"
 
-    def make_call(self, phone_number: str, customer_name: str, context: str = "") -> Dict[str, Any]:
+    def make_call(self, phone_number: str, customer_name: str, server_url: Optional[str] = None) -> Dict[str, Any]:
         """
         Vapi APIを使用して電話をかける
         """
@@ -32,29 +33,31 @@ class VapiClient:
                         "content": self._get_system_prompt(customer_name)
                     }
                 ],
-                "language": "ja" # 言語設定（モデルによっては効かない場合もあるが明示）
+                "language": "ja", # 言語設定
+                "tools": ALL_TOOLS # 定義したツールを追加
             },
             "voice": {
-                # 日本語対応の高品質な音声プロバイダーを選択（例: 11Labs, OpenAI, Azure）
-                # ここでは汎用性の高いOpenAIのalloyを仮設定。実際は11LabsのMultilingual v2などが日本語には強い。
+                # 日本語対応の高品質な音声プロバイダーを選択
                 "provider": "openai",
                 "voiceId": "alloy",
-                "speed": 1.1, # 少し早口の方が自然に聞こえる場合がある
+                "speed": 1.1, 
             },
              "transcriber": {
                 "provider": "deepgram",
                 "model": "nova-2",
-                "language": "ja", # 日本語の書き起こし精度を最大化
-                "smartFormat": True, # 句読点などを自動補完
+                "language": "ja", 
+                "smartFormat": True, 
             },
-            # 自然な割り込みとフィラーの設定
-            # 注: VapiのAPI仕様変更によりパラメータ名は変更される可能性があるため要確認
-            "silenceTimeoutSeconds": 30, # 長めの無言許容
-            "responseDelaySeconds": 0.4, # 即答しすぎず、少し間を置く（人間らしさ）
+            "silenceTimeoutSeconds": 30, 
+            "responseDelaySeconds": 0.4, 
             "llmRequestDelaySeconds": 0.1,
-            "numWordsToInterrupt": 1, # ユーザーが話し始めたら即座に止まる（感度高め）
-            "backgroundSound": "office" # オフィスの環境音を入れて臨場感を出す（オプション）
+            "numWordsToInterrupt": 1, 
+            "backgroundSound": "office" 
         }
+
+        # サーバーURL（Webhook用）が指定されていれば設定
+        if server_url:
+            assistant_config["serverUrl"] = server_url
 
         payload = {
             "phoneNumber": {
@@ -93,18 +96,18 @@ class VapiClient:
         - 一度に長く話しすぎないでください。会話のキャッチボールを意識してください。
         
         【会話の流れ】
-        1. 挨拶と本人確認（firstMessageで実施済みだが、相手の反応に応じて柔軟に）
+        1. 挨拶と本人確認
         2. 動画を見たきっかけや、現在困っていることのヒアリング
-           - 例：「今回、動画を請求されたということは、何か集客でお悩みでしたか？」
         3. 課題への共感
-           - 例：「それは大変ですよね。実は他の方からも同じような相談をよく受けるんです。」
         4. 解決策の提示（Zoom相談への誘導）
-           - 例：「その状況でしたら、動画を見るよりも一度直接お話しした方が、具体的な解決策をお伝えできると思います。明日か明後日、15分ほどお時間は取れませんか？」
         5. 日程調整と確定
-           - 具体的な日時（◯日の◯時など）を聞き出し、確定させる。
+           - 具体的な日時（例: 2026-01-23T14:00:00+09:00 のような形式）を確定させたら、必ず `bookAppointment` ツールを呼び出してください。
+           - ツール呼び出しが成功したら、「ありがとうございます。今、詳細とMeetリンクをSMSで送りましたので、確認してください」と伝えてください。
+           - もし相手が資料を欲しがったり、会話終了時にリンクを送る必要がある場合は `sendSmsInfo` ツールを使ってください。
         
         【禁止事項】
         - 押し売りをしてはいけません。相手が嫌がったら引いてください。
         - 嘘をついてはいけません。
         - ロボットのような機械的な口調にならないようにしてください。
+        - カレンダー予約やSMS送信は、必ず提供されているツール（function）を使用してください。自分で「送りました」と嘘をつかないでください。
         """
